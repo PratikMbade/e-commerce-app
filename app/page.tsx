@@ -9,7 +9,7 @@ import { getFeaturedProducts } from "./actions/product"
 
 export default async function HomePage() {
   const featuredProducts = await getFeaturedProducts()
-  const latestProducts = mockProducts.slice(0, 4)
+  const latestProducts = featuredProducts.slice(0, 4)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -199,7 +199,7 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 ShopHub. All rights reserved.</p>
+            <p>&copy; 2025 ShopHub. All rights reserved.</p>
           </div>
         </div>
       </footer>

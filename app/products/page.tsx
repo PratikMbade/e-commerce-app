@@ -105,7 +105,7 @@ export default function ProductsPage() {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
+                  <SelectItem key={category.id} value={category.slug}>
                     {category.name}
                   </SelectItem>
                 ))}

@@ -129,7 +129,7 @@ export default function OrderConfirmationPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
-                  <p className="font-bold text-lg">${order.total.toFixed(2)}</p>
+                  <p className="font-bold text-lg">Rs: {order.total.toFixed(2)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -174,7 +174,7 @@ export default function OrderConfirmationPage() {
                         <p className="font-medium">Product ID: {item.productId}</p>
                         <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                       </div>
-                      <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-semibold">Rs: {(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>

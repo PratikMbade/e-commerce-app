@@ -1,17 +1,43 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { mockProducts } from "@/lib/mock-data"
 import { prisma } from "@/lib/db"
 import { Prisma } from "@prisma/client"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get("category")
+    console.log('Fetching products with params:', Object.fromEntries(searchParams));
+    let category = searchParams.get("category")
     const featured = searchParams.get("featured")
     const search = searchParams.get("search")
     const limit = searchParams.get("limit")
 
-    let filteredProducts = [...mockProducts]
+    console.log('Fetching products with params:', { category, featured, search, limit });
+
+  // get products from database
+
+   if(category){
+     const cat = await prisma.category.findUnique({ where: { slug: category } });
+     if (!cat) {
+       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+     }
+     category = cat.id;
+   }
+
+  const products = await prisma.product.findMany({
+    where: {
+      ...(category && { categoryId: category }),
+      ...(featured === "true" && { featured: true }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    },
+    take: limit ? Number(limit) : undefined,
+  })
+
+    let filteredProducts = [...products]
 
     // Filter by category
     if (category) {

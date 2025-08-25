@@ -123,7 +123,7 @@ export default function OrdersPage() {
                         <p className="text-sm text-gray-600">
                           {order.items.length} {order.items.length === 1 ? "item" : "items"}
                         </p>
-                        <p className="font-semibold text-lg">${order.total.toFixed(2)}</p>
+                        <p className="font-semibold text-lg">Rs: {order.total.toFixed(2)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-600">Total Items</p>

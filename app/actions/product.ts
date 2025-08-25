@@ -25,3 +25,18 @@ export async function getFeaturedProducts() {
     }
 
 }
+
+export async function getAllProducts() {
+    try {
+        const allProducts = await prisma.product.findMany({
+            include: {
+                category: true,
+            },
+        })
+
+        return allProducts
+    } catch (error) {
+        console.error("Error fetching all products:", error)
+        throw new Error("Failed to fetch all products")
+    }
+}
