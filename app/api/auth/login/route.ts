@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateToken } from "@/lib/auth"
+import { comparePassword, generateToken } from "@/lib/auth"
 import { mockUsers } from "@/lib/mock-data"
+import { prisma } from "@/lib/db"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,10 @@ export async function POST(request: NextRequest) {
     }
 
     // In a real app, this would query the database
-    const user = mockUsers.find((u) => u.email === email)
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
+
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
@@ -19,13 +23,12 @@ export async function POST(request: NextRequest) {
 
     // For demo purposes, we'll accept any password
     // In production, use: const isValidPassword = await comparePassword(password, user.password)
-    const isValidPassword = true
-
+    const isValidPassword = await comparePassword(password, user.password)
     if (!isValidPassword) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    const token = generateToken({
+    const token = await generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,

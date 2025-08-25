@@ -120,6 +120,32 @@ export const mockUsers = [
   },
 ]
 
+export const mockSalesData: SalesData[] = [
+  { month: "Jan", sales: 45, revenue: 4500 },
+  { month: "Feb", sales: 52, revenue: 5200 },
+  { month: "Mar", sales: 48, revenue: 4800 },
+  { month: "Apr", sales: 61, revenue: 6100 },
+  { month: "May", sales: 55, revenue: 5500 },
+  { month: "Jun", sales: 67, revenue: 6700 },
+]
+export interface SalesData {
+  month: string
+  sales: number
+  revenue: number
+}
+
+export interface ProductSalesData {
+  productName: string
+  sales: number
+  revenue: number
+}
+export const mockProductSales: ProductSalesData[] = [
+  { productName: "Wireless Headphones", sales: 85, revenue: 16999.15 },
+  { productName: "Cotton T-Shirt", sales: 120, revenue: 3598.8 },
+  { productName: "JavaScript Guide", sales: 45, revenue: 1799.55 },
+  { productName: "Garden Hose", sales: 32, revenue: 1471.68 },
+]
+
 // Helper functions for mock data
 export function getProductById(id: string) {
   return mockProducts.find((product) => product.id === id)

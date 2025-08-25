@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose"
 import bcrypt from "bcryptjs"
 import type { NextRequest } from "next/server"
+import { prisma } from "./db"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
 
@@ -11,7 +12,7 @@ export interface JWTPayload {
 }
 
 export async function generateToken(payload: JWTPayload): Promise<string> {
-  return await new SignJWT(payload)
+  return await new SignJWT({ userId: payload.userId, email: payload.email, role: payload.role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -21,7 +22,7 @@ export async function generateToken(payload: JWTPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET)
-    return payload as JWTPayload
+    return payload as unknown as JWTPayload
   } catch {
     return null
   }
@@ -63,4 +64,15 @@ export async function requireAdmin(request: NextRequest): Promise<JWTPayload | n
     return null
   }
   return user
+}
+
+
+export async function getUserIdFromToken(token: string): Promise<string | null> {
+  const payload = await verifyToken(token)
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload?.userId }
+  })
+
+  return user?.id || null
 }

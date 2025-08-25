@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockProducts, mockCategories } from "@/lib/mock-data"
 import Link from "next/link"
+import { Toaster } from "sonner"
+import { getFeaturedProducts } from "./actions/product"
 
-export default function HomePage() {
-  const featuredProducts = mockProducts.filter((product) => product.featured)
+export default async function HomePage() {
+  const featuredProducts = await getFeaturedProducts()
   const latestProducts = mockProducts.slice(0, 4)
 
   return (
@@ -174,13 +176,13 @@ export default function HomePage() {
               <h3 className="font-semibold mb-4">Account</h3>
               <ul className="space-y-2 text-gray-400">
                 <li>
-                  <Link href="/login" className="hover:text-white">
-                    Sign In
+                  <Link href="/admin/login" className="hover:text-white">
+                    Admin Login
                   </Link>
                 </li>
                 <li>
-                  <Link href="/register" className="hover:text-white">
-                    Create Account
+                  <Link href="/admin/register" className="hover:text-white">
+                    Admin Register
                   </Link>
                 </li>
                 <li>
@@ -201,6 +203,8 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      <Toaster />
     </div>
   )
 }

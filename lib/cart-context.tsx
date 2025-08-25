@@ -39,6 +39,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const loadCart = async () => {
     try {
+      setLoading(true)
       if (user) {
         // Load cart from server for authenticated users
         const response = await fetch("/api/cart", {
@@ -48,7 +49,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         })
         if (response.ok) {
           const data = await response.json()
-          setItems(data.items || [])
+          // Transform API response to match CartItem interface
+          const transformedItems: CartItem[] = (data.items || []).map((item: any) => ({
+            id: item.id,
+            productId: item.product.id,
+            name: item.product.name,
+            price: item.product.price,
+            image: item.product.image,
+            quantity: item.quantity,
+            stock: item.product.stock,
+          }))
+          setItems(transformedItems)
         }
       } else {
         // Load cart from localStorage for guest users
@@ -64,83 +75,176 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const saveCart = async (newItems: CartItem[]) => {
-    if (user) {
-      // Save to server for authenticated users
-      try {
-        await fetch("/api/cart", {
+  const saveCartToLocalStorage = (newItems: CartItem[]) => {
+    localStorage.setItem("cart", JSON.stringify(newItems))
+  }
+
+  const addItem = async (product: any, quantity = 1) => {
+    try {
+      if (user) {
+        // Save to server for authenticated user
+        const response = await fetch("/api/cart", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
           },
-          body: JSON.stringify({ items: newItems }),
+          body: JSON.stringify({ 
+            productId: product.id, 
+            quantity: quantity,
+            action: "add" 
+          }),
         })
-      } catch (error) {
-        console.error("Failed to save cart to server:", error)
-      }
-    } else {
-      // Save to localStorage for guest users
-      localStorage.setItem("cart", JSON.stringify(newItems))
-    }
-  }
 
-  const addItem = (product: any, quantity = 1) => {
-    setItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.productId === product.id)
-      let newItems: CartItem[]
-
-      if (existingItem) {
-        // Update quantity if item already exists
-        const newQuantity = Math.min(existingItem.quantity + quantity, product.stock)
-        newItems = prevItems.map((item) => (item.productId === product.id ? { ...item, quantity: newQuantity } : item))
-      } else {
-        // Add new item
-        const newItem: CartItem = {
-          id: `${product.id}-${Date.now()}`,
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity: Math.min(quantity, product.stock),
-          stock: product.stock,
+        if (response.ok) {
+          // Reload cart from server to get updated state
+          await loadCart()
+          addToast("Item added to cart", "success")
+        } else {
+          const error = await response.json()
+          addToast(error.error || "Failed to add item to cart", "error")
         }
-        newItems = [...prevItems, newItem]
+      } else {
+        // Handle guest user cart
+        setItems((prevItems) => {
+          const existingItem = prevItems.find((item) => item.productId === product.id)
+          let newItems: CartItem[]
+
+          if (existingItem) {
+            // Update quantity if item already exists
+            const newQuantity = Math.min(existingItem.quantity + quantity, product.stock)
+            newItems = prevItems.map((item) => 
+              item.productId === product.id 
+                ? { ...item, quantity: newQuantity } 
+                : item
+            )
+          } else {
+            // Add new item
+            const newItem: CartItem = {
+              id: `${product.id}-${Date.now()}`,
+              productId: product.id,
+              name: product.name,
+              price: product.price,
+              image: product.image,
+              quantity: Math.min(quantity, product.stock),
+              stock: product.stock,
+            }
+            newItems = [...prevItems, newItem]
+          }
+
+          saveCartToLocalStorage(newItems)
+          addToast("Item added to cart", "success")
+          return newItems
+        })
       }
-
-      saveCart(newItems)
-      return newItems
-    })
-  }
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    setItems((prevItems) => {
-      const newItems = prevItems.map((item) =>
-        item.productId === productId ? { ...item, quantity: Math.min(Math.max(quantity, 1), item.stock) } : item,
-      )
-      saveCart(newItems)
-      addToast("Cart updated", "info")
-      return newItems
-    })
-  }
-
-  const removeItem = (productId: string) => {
-    setItems((prevItems) => {
-      const newItems = prevItems.filter((item) => item.productId !== productId)
-      saveCart(newItems)
-      addToast("Item removed from cart", "info")
-      return newItems
-    })
-  }
-
-  const clearCart = () => {
-    setItems([])
-    if (user) {
-      saveCart([])
-    } else {
-      localStorage.removeItem("cart")
+    } catch (error) {
+      console.error("Failed to add item to cart:", error)
+      addToast("Failed to add item to cart", "error")
     }
-    addToast("Cart cleared", "info")
+  }
+
+  const updateQuantity = async (productId: string, quantity: number) => {
+    try {
+      if (user) {
+        // Update on server for authenticated user
+        const response = await fetch("/api/cart", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
+          },
+          body: JSON.stringify({ productId, quantity }),
+        })
+
+        if (response.ok) {
+          // Reload cart from server to get updated state
+          await loadCart()
+          addToast("Cart updated", "info")
+        } else {
+          const error = await response.json()
+          addToast(error.error || "Failed to update cart", "error")
+        }
+      } else {
+        // Handle guest user cart
+        setItems((prevItems) => {
+          const newItems = prevItems.map((item) =>
+            item.productId === productId 
+              ? { ...item, quantity: Math.min(Math.max(quantity, 1), item.stock) } 
+              : item
+          )
+          saveCartToLocalStorage(newItems)
+          addToast("Cart updated", "info")
+          return newItems
+        })
+      }
+    } catch (error) {
+      console.error("Failed to update cart:", error)
+      addToast("Failed to update cart", "error")
+    }
+  }
+
+  const removeItem = async (productId: string) => {
+    try {
+      if (user) {
+        // Remove from server for authenticated user
+        const response = await fetch(`/api/cart?productId=${productId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
+          },
+        })
+
+        if (response.ok) {
+          // Reload cart from server to get updated state
+          await loadCart()
+          addToast("Item removed from cart", "info")
+        } else {
+          const error = await response.json()
+          addToast(error.error || "Failed to remove item", "error")
+        }
+      } else {
+        // Handle guest user cart
+        setItems((prevItems) => {
+          const newItems = prevItems.filter((item) => item.productId !== productId)
+          saveCartToLocalStorage(newItems)
+          addToast("Item removed from cart", "info")
+          return newItems
+        })
+      }
+    } catch (error) {
+      console.error("Failed to remove item:", error)
+      addToast("Failed to remove item", "error")
+    }
+  }
+
+  const clearCart = async () => {
+    try {
+      if (user) {
+        // Clear cart on server for authenticated user
+        const response = await fetch("/api/cart", {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
+          },
+        })
+
+        if (response.ok) {
+          setItems([])
+          addToast("Cart cleared", "info")
+        } else {
+          const error = await response.json()
+          addToast(error.error || "Failed to clear cart", "error")
+        }
+      } else {
+        // Handle guest user cart
+        setItems([])
+        localStorage.removeItem("cart")
+        addToast("Cart cleared", "info")
+      }
+    } catch (error) {
+      console.error("Failed to clear cart:", error)
+      addToast("Failed to clear cart", "error")
+    }
   }
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)

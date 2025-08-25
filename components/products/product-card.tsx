@@ -62,7 +62,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </Link>
         <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
         <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-blue-600">${product.price}</span>
+          <span className="text-2xl font-bold text-blue-600">Rs: {product.price}</span>
           <span className="text-sm text-gray-500">{product.stock} in stock</span>
         </div>
       </CardContent>

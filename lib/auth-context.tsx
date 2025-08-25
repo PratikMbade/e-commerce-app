@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
+import * as authActions from "@/app/actions/auth"
 
 interface User {
   id: string
@@ -13,15 +15,25 @@ interface User {
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (
     email: string,
     password: string,
     firstName: string,
     lastName: string,
   ) => Promise<{ success: boolean; error?: string }>
-  logout: () => void
+  adminRegister: (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    adminCode: string,
+  ) => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
   loading: boolean
   isAdmin: boolean
+  isAuthenticated: boolean
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -29,96 +41,150 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   const isAdmin = user?.role === "ADMIN"
+  const isAuthenticated = !!user
 
+  // Fetch user on mount and refresh
   useEffect(() => {
     checkAuth()
   }, [])
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem("auth-token")
-      if (!token) {
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
+      setLoading(true)
+      const currentUser = await authActions.getCurrentUser()
+      if (currentUser) {
+        setUser(currentUser)
       } else {
-        localStorage.removeItem("auth-token")
+        setUser(null)
       }
     } catch (error) {
       console.error("Auth check failed:", error)
-      localStorage.removeItem("auth-token")
+      setUser(null)
     } finally {
       setLoading(false)
     }
   }
 
+  const refreshUser = async () => {
+    await checkAuth()
+  }
+
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        localStorage.setItem("auth-token", data.token)
-        setUser(data.user)
+      const result = await authActions.login(email, password)
+      
+      if (result.success && result.user) {
+        setUser(result.user)
+        // Refresh the router to update any server components
+        router.refresh()
         return { success: true }
       } else {
-        return { success: false, error: data.error || "Login failed" }
+        return { success: false, error: result.error || "Login failed" }
       }
     } catch (error) {
+      console.error("Login error:", error)
       return { success: false, error: "Network error" }
     }
   }
 
-  const register = async (email: string, password: string, firstName: string, lastName: string) => {
+  const adminLogin = async (email: string, password: string) => {
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password, firstName, lastName }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        localStorage.setItem("auth-token", data.token)
-        setUser(data.user)
+      const result = await authActions.adminLogin(email, password)
+      
+      if (result.success && result.user) {
+        setUser(result.user)
+        router.refresh()
         return { success: true }
       } else {
-        return { success: false, error: data.error || "Registration failed" }
+        return { success: false, error: result.error || "Admin login failed" }
       }
     } catch (error) {
+      console.error("Admin login error:", error)
       return { success: false, error: "Network error" }
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem("auth-token")
-    setUser(null)
+  const register = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string
+  ) => {
+    try {
+      const result = await authActions.register(email, password, firstName, lastName)
+      
+      if (result.success && result.user) {
+        setUser(result.user)
+        router.refresh()
+        return { success: true }
+      } else {
+        return { success: false, error: result.error || "Registration failed" }
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      return { success: false, error: "Network error" }
+    }
+  }
+
+  const adminRegister = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    adminCode: string
+  ) => {
+    try {
+      const result = await authActions.adminRegister(
+        email,
+        password,
+        firstName,
+        lastName,
+        adminCode
+      )
+      
+      if (result.success) {
+        // Admin registration doesn't auto-login, redirect to login
+        return { success: true }
+      } else {
+        return { success: false, error: result.error || "Admin registration failed" }
+      }
+    } catch (error) {
+      console.error("Admin registration error:", error)
+      return { success: false, error: "Network error" }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await authActions.logout()
+      setUser(null)
+      router.refresh()
+      router.push("/")
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, isAdmin }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        adminLogin,
+        register,
+        adminRegister,
+        logout,
+        loading,
+        isAdmin,
+        isAuthenticated,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   )
 }
 

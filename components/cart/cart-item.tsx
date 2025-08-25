@@ -32,7 +32,7 @@ export function CartItemComponent({ item, onUpdateQuantity, onRemove }: CartItem
           {/* Product Details */}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg truncate">{item.name}</h3>
-            <p className="text-gray-600">${item.price.toFixed(2)} each</p>
+            <p className="text-gray-600">Rs: {item.price.toFixed(2)} each</p>
             <p className="text-sm text-gray-500">In stock: {item.stock}</p>
           </div>
 
@@ -54,7 +54,7 @@ export function CartItemComponent({ item, onUpdateQuantity, onRemove }: CartItem
 
           {/* Price and Remove */}
           <div className="text-right">
-            <p className="font-bold text-lg">${(item.price * item.quantity).toFixed(2)}</p>
+            <p className="font-bold text-lg">Rs: {(item.price * item.quantity).toFixed(2)}</p>
             <Button
               variant="ghost"
               size="sm"
